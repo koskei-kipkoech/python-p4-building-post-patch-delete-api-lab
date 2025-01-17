@@ -23,12 +23,37 @@ def bakeries():
     bakeries = [bakery.to_dict() for bakery in Bakery.query.all()]
     return make_response(  bakeries,   200  )
 
-@app.route('/bakeries/<int:id>')
+@app.route('/baked_goods', methods=['POST'])
+def create_baked_good():
+    data = request.form
+    name = data.get('name')
+    price = data.get('price')
+    bakery_id = data.get('bakery_id')
+
+    if not name or not price or not bakery_id:
+        return make_response({"Error": "Missing fields"}, 400)
+
+    new_baked_good = BakedGood(name=name, price=price, bakery_id=bakery_id)
+    db.session.add(new_baked_good)
+    db.session.commit()
+
+    return make_response(new_baked_good.to_dict(), 201)
+
+@app.route('/bakeries/<int:id>', methods=['PATCH'])
 def bakery_by_id(id):
 
     bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
-    return make_response ( bakery_serialized, 200  )
+    if bakery:
+        data = request.form
+        new_name = data.get('name')
+        if new_name:
+            bakery.name = new_name
+            db.session.commit()
+            return make_response(bakery.to_dict()),200
+        else:
+            return make_response({"Error": "No name providedto update."}, 404)
+    else:
+        return make_response({"Error": "Bakery not found"},404)
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
@@ -37,7 +62,16 @@ def baked_goods_by_price():
         bg.to_dict() for bg in baked_goods_by_price
     ]
     return make_response( baked_goods_by_price_serialized, 200  )
-   
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_good(id):
+    baked_good = BakedGood.query.filter_by(id=id).first()
+    if baked_good:
+        db.session.delete(baked_good)
+        db.session.commit()
+        return make_response({"Message": f"Baked good with ID {id} successfully deleted"}, 200)
+    else:
+        return make_response({"Error": "Baked good not found"}, 404)
+
 
 @app.route('/baked_goods/most_expensive')
 def most_expensive_baked_good():
